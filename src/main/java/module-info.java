@@ -1,10 +1,10 @@
 module com.mertblk.eegui {
     requires javafx.controls;
-    requires javafx.fxml;
-
     requires MaterialFX;
     requires com.fazecast.jSerialComm;
+    requires javafx.fxml;
 
-    opens com.mertblk.eegui to javafx.fxml;
+    opens com.mertblk.eegui.view to javafx.graphics;
+
     exports com.mertblk.eegui;
 }
