@@ -1,8 +1,11 @@
 package com.mertblk.eegui.view;
 
+import com.mertblk.eegui.db.DatabaseManager;
 import com.mertblk.eegui.viewmodel.SensorViewModel;
 import io.github.palexdev.materialfx.controls.MFXButton;
 import io.github.palexdev.materialfx.controls.MFXComboBox;
+import io.github.palexdev.materialfx.controls.MFXTextField;
+import io.github.palexdev.materialfx.enums.FloatMode;
 import io.github.palexdev.materialfx.theming.JavaFXThemes;
 import io.github.palexdev.materialfx.theming.MaterialFXStylesheets;
 import io.github.palexdev.materialfx.theming.UserAgentBuilder;
@@ -14,11 +17,16 @@ import javafx.geometry.Pos;
 import javafx.scene.Node;
 import javafx.scene.Scene;
 import javafx.scene.control.Label;
+import javafx.scene.control.Menu;
+import javafx.scene.control.MenuBar;
+import javafx.scene.control.MenuItem;
 import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Circle;
 import javafx.scene.text.Font;
 import javafx.stage.Stage;
+
+import java.util.Objects;
 
 public class MainView extends Application {
 
@@ -26,6 +34,7 @@ public class MainView extends Application {
 
     @Override
     public void start(Stage stage) {
+        DatabaseManager.initializeDatabase();
 
         UserAgentBuilder.builder()
                 .themes(JavaFXThemes.MODENA)
@@ -35,32 +44,44 @@ public class MainView extends Application {
                 .build()
                 .setGlobal();
 
-
         BorderPane root = new BorderPane();
         root.setStyle("-fx-background-color: #1e1e1e;");
 
-        // --- Top Connection Bar ---
+        VBox topContainer = new VBox();
+        MenuBar menuBar = createMenuBar();
         HBox connectionBar = createConnectionBar();
-        root.setTop(connectionBar);
+        topContainer.getChildren().addAll(menuBar, connectionBar);
+        root.setTop(topContainer);
 
-        // --- Center Sensor Grid ---
         GridPane sensorGrid = createSensorGrid();
         root.setCenter(sensorGrid);
         BorderPane.setMargin(sensorGrid, new Insets(20));
 
-        // --- Bottom Status Bar ---
         HBox statusBar = createStatusBar();
         root.setBottom(statusBar);
 
         Scene scene = new Scene(root, 1000, 800);
+        scene.getStylesheets().add(Objects.requireNonNull(getClass().getResource("/styles/main-view.css")).toExternalForm());
         stage.setTitle("Sensor Dashboard");
         stage.setScene(scene);
-        stage.setMinWidth(650);
+        stage.setMinWidth(800);
         stage.setMinHeight(500);
         stage.show();
 
-        // Disconnect on close
         stage.setOnCloseRequest(event -> viewModel.disconnect());
+    }
+
+    private MenuBar createMenuBar() {
+        MenuBar menuBar = new MenuBar();
+        Menu dbMenu = new Menu("Database");
+        MenuItem showDataMenuItem = new MenuItem("Show Records");
+        showDataMenuItem.setOnAction(event -> {
+            new DatabaseView(viewModel, viewModel.getCurrentSessionId()).show();
+        });
+
+        dbMenu.getItems().add(showDataMenuItem);
+        menuBar.getMenus().add(dbMenu);
+        return menuBar;
     }
 
     private HBox createConnectionBar() {
@@ -74,21 +95,37 @@ public class MainView extends Application {
 
         MFXComboBox<String> comboPorts = new MFXComboBox<>(viewModel.getPortNames());
         comboPorts.setFloatingText("Select Port");
-        //comboPorts.setPromptText("Select Port");
         comboPorts.setPrefWidth(150);
+
+        MFXTextField sessionNameField = new MFXTextField();
+        sessionNameField.setFloatingText("Optional: Session Name");
+        sessionNameField.setFloatMode(FloatMode.INLINE);
+        sessionNameField.setPrefWidth(250);
 
         MFXButton connectButton = new MFXButton("Connect");
         MFXButton disconnectButton = new MFXButton("Disconnect");
         MFXButton refreshButton = new MFXButton("Refresh Ports");
+        
         refreshButton.setOnAction(event -> viewModel.scanPorts());
 
-        connectButton.setOnAction(event -> viewModel.connectToPort(comboPorts.getValue()));
+        connectButton.setOnAction(event -> {
+            boolean success = viewModel.startRecording(sessionNameField.getText());
+            if (success) {
+                viewModel.connectToPort(comboPorts.getValue());
+            }
+        });
         disconnectButton.setOnAction(event -> viewModel.disconnect());
+
+        comboPorts.disableProperty().bind(viewModel.connectedProperty());
+        sessionNameField.disableProperty().bind(viewModel.connectedProperty());
+        refreshButton.disableProperty().bind(viewModel.connectedProperty());
+        connectButton.disableProperty().bind(viewModel.connectedProperty());
+        disconnectButton.disableProperty().bind(viewModel.connectedProperty().not());
 
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
-        connectionBar.getChildren().addAll(portLabel, comboPorts, connectButton, disconnectButton, refreshButton, spacer);
+        connectionBar.getChildren().addAll(portLabel, comboPorts, sessionNameField, connectButton, disconnectButton, refreshButton, spacer);
         return connectionBar;
     }
 
@@ -103,18 +140,20 @@ public class MainView extends Application {
         statusLabel.textProperty().bind(viewModel.statusInfoProperty());
         statusLabel.setTextFill(Color.WHITE);
 
-        // Change indicator color based on connection status
-        viewModel.statusInfoProperty().addListener((obs, oldStatus, newStatus) -> {
-            if (newStatus.startsWith("Connected")) {
+        viewModel.connectedProperty().addListener((obs, wasConnected, isConnected) -> {
+            if (isConnected) {
                 statusIndicator.setFill(Color.LIMEGREEN);
-            } else if (newStatus.startsWith("Failed") || newStatus.startsWith("Connection lost")) {
-                statusIndicator.setFill(Color.ORANGERED);
             } else {
                 statusIndicator.setFill(Color.GRAY);
             }
         });
+        
+        viewModel.statusInfoProperty().addListener((obs, oldStatus, newStatus) -> {
+            if (newStatus != null && (newStatus.startsWith("Failed") || newStatus.startsWith("Connection lost") || newStatus.startsWith("Error"))) {
+                statusIndicator.setFill(Color.ORANGERED);
+            }
+        });
 
-        statusBar.getChildren().addAll(statusIndicator, statusLabel);
         return statusBar;
     }
 
@@ -124,14 +163,12 @@ public class MainView extends Application {
         grid.setVgap(20);
         grid.setAlignment(Pos.CENTER);
 
-        // Column constraints
         ColumnConstraints col1 = new ColumnConstraints();
         col1.setHgrow(Priority.ALWAYS);
         ColumnConstraints col2 = new ColumnConstraints();
         col2.setHgrow(Priority.ALWAYS);
         grid.getColumnConstraints().addAll(col1, col2);
 
-        // Add sensor displays
         grid.add(createSensorDisplay("Temperature", viewModel.getModel().temperatureProperty()), 0, 0);
         grid.add(createSensorDisplay("Humidity", viewModel.getModel().humidityProperty()), 1, 0);
         grid.add(createSensorDisplay("Light Level", viewModel.getModel().lightProperty()), 0, 1);
@@ -159,7 +196,6 @@ public class MainView extends Application {
         dataLabel.setFont(new Font("System Regular", 24));
         dataLabel.setTextFill(Color.WHITE);
 
-        // Bind the dataLabel to the property, but extract the value part
         dataLabel.textProperty().bind(Bindings.createStringBinding(() -> {
             String value = dataProperty.get();
             if (value != null && value.contains(":")) {
@@ -168,11 +204,10 @@ public class MainView extends Application {
             return "N/A";
         }, dataProperty));
 
-        // Special styling for alarms
         if (title.toLowerCase().contains("alarm")) {
             dataProperty.addListener((obs, oldVal, newVal) -> {
                 if (newVal != null && newVal.contains("ON")) {
-                    box.setStyle("-fx-background-color: #8B0000; -fx-padding: 20; -fx-border-radius: 8; -fx-background-radius: 8;"); // Dark Red
+                    box.setStyle("-fx-background-color: #8B0000; -fx-padding: 20; -fx-border-radius: 8; -fx-background-radius: 8;");
                 } else {
                     box.setStyle("-fx-background-color: #2a2a2a; -fx-padding: 20; -fx-border-radius: 8; -fx-background-radius: 8;");
                 }
