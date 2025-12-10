@@ -1,4 +1,4 @@
-package com.mertblk.eegui.mock;
+package com.mertblk.sensorui.mock;
 
 import com.fazecast.jSerialComm.SerialPort;
 import java.io.OutputStream;

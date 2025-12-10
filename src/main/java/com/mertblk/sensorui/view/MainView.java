@@ -1,7 +1,7 @@
-package com.mertblk.eegui.view;
+package com.mertblk.sensorui.view;
 
-import com.mertblk.eegui.db.DatabaseManager;
-import com.mertblk.eegui.viewmodel.SensorViewModel;
+import com.mertblk.sensorui.db.DatabaseManager;
+import com.mertblk.sensorui.viewmodel.SensorViewModel;
 import io.github.palexdev.materialfx.controls.MFXButton;
 import io.github.palexdev.materialfx.controls.MFXComboBox;
 import io.github.palexdev.materialfx.controls.MFXTextField;

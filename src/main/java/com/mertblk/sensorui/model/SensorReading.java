@@ -1,4 +1,4 @@
-package com.mertblk.eegui.model;
+package com.mertblk.sensorui.model;
 
 import javafx.beans.property.*;
 

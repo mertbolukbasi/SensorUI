@@ -1,9 +1,9 @@
-package com.mertblk.eegui.viewmodel;
+package com.mertblk.sensorui.viewmodel;
 
 import com.fazecast.jSerialComm.SerialPort;
-import com.mertblk.eegui.db.DatabaseManager;
-import com.mertblk.eegui.model.SensorData;
-import com.mertblk.eegui.model.SensorDataModel;
+import com.mertblk.sensorui.db.DatabaseManager;
+import com.mertblk.sensorui.model.SensorData;
+import com.mertblk.sensorui.model.SensorDataModel;
 import javafx.application.Platform;
 import javafx.beans.property.BooleanProperty;
 import javafx.beans.property.SimpleBooleanProperty;
@@ -124,47 +124,57 @@ public class SensorViewModel {
     private void parseAndProcessData(String dataLine) {
         SensorData currentData = new SensorData();
         String[] parts = dataLine.split(",");
-        for (String part : parts) {
-            String[] keyValue = part.split(":");
-            if (keyValue.length == 2) {
-                String key = keyValue[0].trim();
-                String value = keyValue[1].trim();
-                try {
-                    switch (key) {
-                        case "TEMP":
-                            model.setTemperature(value);
-                            currentData.setTemperature(Float.parseFloat(value));
-                            break;
-                        case "HUM":
-                            model.setHumidity(value);
-                            currentData.setHumidity(Integer.parseInt(value));
-                            break;
-                        case "LIGHT":
-                            model.setLight(value);
-                            currentData.setLight(Integer.parseInt(value));
-                            break;
-                        case "FIRE":
-                            model.setFireAlarm(value.equals("1") ? "ON" : "OFF");
-                            currentData.setFire(Integer.parseInt(value));
-                            break;
-                        case "S1":
-                            model.setSound1(value);
-                            currentData.setS1(Integer.parseInt(value));
-                            break;
-                        case "S2":
-                            model.setSound2(value);
-                            currentData.setS2(Integer.parseInt(value));
-                            break;
-                        case "SA":
-                            model.setSoundAlarm(value.equals("1") ? "ON" : "OFF");
-                            currentData.setSa(Integer.parseInt(value));
-                            break;
-                    }
-                } catch (NumberFormatException e) {
-                    System.err.println("Could not parse value for " + key + ": " + value);
-                }
-            }
-        }
+
+        // Temperature
+        model.setTemperature(parts[1]);
+        currentData.setTemperature(Float.parseFloat(parts[1]));
+
+        //Fire Alarm
+        int fireAlarmData = Integer.parseInt(parts[2]);
+        String fireAlarm;
+        if(fireAlarmData == 0) fireAlarm = "Convenient";
+        else fireAlarm = "Hot";
+        model.setFireAlarm(fireAlarm);
+        currentData.setFire(fireAlarmData);
+
+        //Humidity
+        float humidityData = Float.parseFloat(parts[3]);
+        String humidity = "% " + humidityData;
+        model.setHumidity(humidity);
+        currentData.setHumidity((int) humidityData);
+
+        //Light
+        int lightData = Integer.parseInt(parts[4]);
+        String light;
+        if(lightData == 0) light = "Off";
+        else light = "On";
+        model.setLight(light);
+        currentData.setLight(lightData);
+
+        //Sound 1
+        int sound1Data = Integer.parseInt(parts[5]);
+        String sound1;
+        if(sound1Data == 0) sound1 = "Quite";
+        else sound1 = "Noisy";
+        model.setSound1(sound1);
+        currentData.setS1(sound1Data);
+
+        //Sound 2
+        int sound2Data = Integer.parseInt(parts[6]);
+        String sound2;
+        if(sound2Data == 0) sound2 = "Quite";
+        else sound2 = "Noisy";
+        model.setSound2(sound2);
+        currentData.setS2(sound2Data);
+
+        //Sound Alarm
+        int soundAlarmData = Integer.parseInt(parts[7]);
+        String soundAlarm;
+        if(soundAlarmData == 0) soundAlarm = "Chill";
+        else soundAlarm = "Loud";
+        model.setSoundAlarm(soundAlarm);
+        currentData.setSa(soundAlarmData);
+
 
         if (isRecording) {
             double elapsedSeconds = (System.nanoTime() - startTime) / 1_000_000_000.0;

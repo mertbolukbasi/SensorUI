@@ -1,6 +1,6 @@
-package com.mertblk.eegui;
+package com.mertblk.sensorui;
 
-import com.mertblk.eegui.view.MainView;
+import com.mertblk.sensorui.view.MainView;
 import javafx.application.Application;
 
 public class Launcher {

@@ -1,7 +1,7 @@
-package com.mertblk.eegui.db;
+package com.mertblk.sensorui.db;
 
-import com.mertblk.eegui.model.SensorData;
-import com.mertblk.eegui.model.SensorReading;
+import com.mertblk.sensorui.model.SensorData;
+import com.mertblk.sensorui.model.SensorReading;
 
 import java.sql.*;
 import java.time.LocalDateTime;
