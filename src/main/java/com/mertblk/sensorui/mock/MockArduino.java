@@ -2,6 +2,7 @@ package com.mertblk.sensorui.mock;
 
 import com.fazecast.jSerialComm.SerialPort;
 import java.io.OutputStream;
+import java.util.Locale;
 import java.util.Random;
 
 public class MockArduino {
@@ -21,19 +22,23 @@ public class MockArduino {
         System.out.println("Mock Arduino was started. " + "Sending data to " + MOCK_PORT_NAME);
 
         try (OutputStream outputStream = mockPort.getOutputStream()) {
+            Thread.sleep(2000);
+
             Random random = new Random();
             while (true) {
+                String dummy = "DUMMY";
                 float temp = 20 + random.nextFloat() * 10;
-                int hum = 40 + random.nextInt(21);
-                int light = 200 + random.nextInt(401);
-                int fire = random.nextInt(10) == 0 ? 1 : 0;
-                int s1 = random.nextInt(100);
-                int s2 = random.nextInt(100);
-                int sa = random.nextInt(15) == 0 ? 1 : 0;
+                int fire = random.nextInt(2);
+                float hum = random.nextFloat() * 100;
+                int light = random.nextInt(2);
+                int s1 = random.nextInt(2);
+                int s2 = random.nextInt(2);
+                int sa = random.nextInt(2);
 
                 String dataLine = String.format(
-                    "TEMP:%.1f,HUM:%d,LIGHT:%d,FIRE:%d,S1:%d,S2:%d,SA:%d\n",
-                    temp, hum, light, fire, s1, s2, sa
+                        Locale.US,
+                        "%s,%.1f,%d,%.1f,%d,%d,%d,%d\n",
+                        dummy, temp, fire, hum, light, s1, s2, sa
                 );
 
                 outputStream.write(dataLine.getBytes());

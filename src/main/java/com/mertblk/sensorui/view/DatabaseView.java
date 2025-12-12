@@ -61,10 +61,8 @@ public class DatabaseView {
         stage.setScene(scene);
         stage.show();
 
-        // Register listener
         viewModel.addOnNewDataListener(onNewDataListener);
 
-        // Unregister listener on close to prevent memory leaks
         stage.setOnCloseRequest(event -> viewModel.removeOnNewDataListener(onNewDataListener));
 
         loadInitialDataAndApplyFilter();
@@ -76,7 +74,7 @@ public class DatabaseView {
 
         Label dateLabel = new Label("Filter by Date (from):");
         dateLabel.setStyle("-fx-text-fill: white;");
-        
+
         Label sessionLabel = new Label("Filter by Session:");
         sessionLabel.setStyle("-fx-text-fill: white;");
 
@@ -85,19 +83,29 @@ public class DatabaseView {
 
         MFXButton resetButton = new MFXButton("Reset");
         resetButton.setOnAction(event -> {
+            datePicker.setValue(null);
             datePicker.clear();
+            sessionComboBox.setValue(null);
             sessionComboBox.clearSelection();
             applyFilters();
         });
 
         MFXButton currentSessionButton = new MFXButton("Show Current Session");
         currentSessionButton.setOnAction(event -> {
-            datePicker.clear(); // Clear other filters
-            sessionComboBox.setValue(initialSessionId);
-            applyFilters();
+            datePicker.setValue(null);
+            datePicker.clear();
+            String currentSessionId = viewModel.getCurrentSessionId();
+            if (currentSessionId != null) {
+                // Ensure the current session ID is in the combo box list
+                if (!sessionComboBox.getItems().contains(currentSessionId)) {
+                    sessionComboBox.getItems().add(currentSessionId);
+                }
+                sessionComboBox.setValue(currentSessionId);
+                applyFilters();
+            }
         });
 
-        currentSessionButton.setDisable(initialSessionId == null);
+        currentSessionButton.disableProperty().bind(viewModel.connectedProperty().not());
 
         sessionComboBox.setPrefWidth(250);
         sessionComboBox.setFloatingText("Session");
@@ -134,11 +142,18 @@ public class DatabaseView {
         if (initialSessionId != null && sessionIds.contains(initialSessionId)) {
             sessionComboBox.setValue(initialSessionId);
         }
-        
+
         applyFilters();
     }
 
     private void refreshData() {
+        List<String> sessionIds = DatabaseManager.getDistinctSessionIds();
+        String selectedSession = sessionComboBox.getValue();
+        sessionComboBox.setItems(FXCollections.observableArrayList(sessionIds));
+        if (selectedSession != null && sessionIds.contains(selectedSession)) {
+            sessionComboBox.setValue(selectedSession);
+        }
+
         applyFilters();
     }
 
@@ -159,7 +174,7 @@ public class DatabaseView {
         filterSql.append("ORDER BY timestamp DESC");
 
         int selectedIndex = tableView.getSelectionModel().getSelectedIndex();
-        
+
         tableData.setAll(DatabaseManager.getSensorReadings(filterSql.toString(), params));
 
         if (selectedIndex != -1 && selectedIndex < tableData.size()) {
